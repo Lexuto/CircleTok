@@ -1,17 +1,252 @@
-// Глобальные переменные для записи
+// Получаем данные пользователя из Telegram
+const tg = window.Telegram.WebApp;
+const user = tg.initDataUnsafe?.user || { id: 123456, username: 'user', first_name: 'User' };
+
+// API URL (замени на свой при деплое)
+const API_URL = 'https://circletok.onrender.com/api';
+
+// Глобальные переменные
+let currentTab = 'feed';
+let currentFeed = [];
+let currentPage = 0;
+let isLoading = false;
+let includeAdult = false;
+let currentUserId = user.id.toString();
+
+// Переменные для записи
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingStream = null;
 let recordingTimer = null;
 let recordingSeconds = 0;
 
-// Запись видео через камеру
-async function recordVideo() {
-    // Останавливаем предыдущую запись, если была
+// Инициализация
+tg.expand();
+tg.ready();
+
+// Регистрация пользователя
+async function registerUser() {
+    try {
+        await fetch(`${API_URL}/user`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: currentUserId,
+                username: user.username || `user_${currentUserId}`,
+                first_name: user.first_name || 'Аноним'
+            })
+        });
+        const nameElement = document.getElementById('username');
+        if (nameElement) nameElement.innerText = user.first_name || 'User';
+    } catch (error) {
+        console.error('Registration error:', error);
+    }
+}
+
+// Загрузка ленты
+async function loadFeed(loadMore = false) {
+    if (isLoading) return;
+    isLoading = true;
+    
+    if (!loadMore) {
+        currentPage = 0;
+        currentFeed = [];
+        showLoading();
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/feed?page=${currentPage}&include_adult=${includeAdult}`);
+        const videos = await response.json();
+        
+        if (loadMore) {
+            currentFeed = [...currentFeed, ...videos];
+        } else {
+            currentFeed = videos;
+        }
+        
+        renderFeed();
+        currentPage++;
+    } catch (error) {
+        console.error('Feed error:', error);
+        showError('Не удалось загрузить ленту');
+    }
+    
+    isLoading = false;
+}
+
+// Рендер ленты
+function renderFeed() {
+    const content = document.getElementById('content');
+    if (!content) return;
+    
+    if (currentFeed.length === 0) {
+        content.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📹</div>
+                <h3>Пока нет видео</h3>
+                <p>Будь первым, кто загрузит кружок!</p>
+                <button class="btn-primary" onclick="window.switchTab('upload')">➕ Создать кружок</button>
+            </div>
+        `;
+        return;
+    }
+    
+    content.innerHTML = `
+        <div class="feed-container">
+            ${currentFeed.map(video => `
+                <div class="video-card" data-video-id="${video.id}">
+                    <div class="video-wrapper">
+                        <video 
+                            class="video-player" 
+                            src="${video.video_url || '#'}" 
+                            preload="metadata"
+                            playsinline
+                            muted
+                            loop
+                        ></video>
+                        <div class="video-overlay">
+                            <div class="video-stats">
+                                <button class="like-btn" onclick="window.toggleLike(${video.id})">
+                                    ❤️ <span class="likes-count">${video.likes_count || 0}</span>
+                                </button>
+                                <button class="favorite-btn" onclick="window.toggleFavorite(${video.id})">
+                                    📁
+                                </button>
+                            </div>
+                            <div class="video-info">
+                                <span class="username">@${video.username || 'user'}</span>
+                                <span class="views">👁 ${video.views_count || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    setupVideoObserver();
+}
+
+// Настройка автовоспроизведения
+function setupVideoObserver() {
+    const videos = document.querySelectorAll('.video-player');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+            if (entry.isIntersecting) {
+                video.play().catch(e => console.log('Autoplay error:', e));
+            } else {
+                video.pause();
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    videos.forEach(video => observer.observe(video));
+}
+
+// Лайк
+window.toggleLike = async function(videoId) {
+    console.log('Like:', videoId);
+    tg.showPopup({
+        title: 'Функция в разработке',
+        message: 'Лайки появятся после подключения Mini App',
+        buttons: [{ type: 'ok' }]
+    });
+};
+
+// Избранное
+window.toggleFavorite = async function(videoId) {
+    console.log('Favorite:', videoId);
+    tg.showPopup({
+        title: 'Функция в разработке',
+        message: 'Избранное появится после подключения Mini App',
+        buttons: [{ type: 'ok' }]
+    });
+};
+
+// Загрузка избранного
+async function loadFavorites() {
+    showLoading();
+    setTimeout(() => {
+        showError('Функция в разработке');
+    }, 500);
+}
+
+// Загрузка профиля
+async function loadProfile() {
+    const content = document.getElementById('content');
+    if (!content) return;
+    
+    content.innerHTML = `
+        <div class="profile-container">
+            <div class="profile-header">
+                <div class="profile-avatar" id="profileAvatar">
+                    ${user.first_name ? user.first_name[0] : 'U'}
+                </div>
+                <h2>${user.first_name || 'User'} ${user.last_name || ''}</h2>
+                <p class="username">@${user.username || `user_${currentUserId}`}</p>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">видео</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">лайков</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">подписчиков</span>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="window.editProfile()">✏️ Редактировать профиль</button>
+            </div>
+        </div>
+    `;
+}
+
+window.editProfile = function() {
+    tg.showPopup({
+        title: 'Редактирование',
+        message: 'Функция в разработке',
+        buttons: [{ type: 'ok' }]
+    });
+};
+
+// Интерфейс загрузки
+function showUploadInterface() {
+    const content = document.getElementById('content');
+    if (!content) return;
+    
+    content.innerHTML = `
+        <div class="upload-container">
+            <h2>📹 Создать кружок</h2>
+            <div class="upload-options">
+                <button class="btn-primary" onclick="window.recordVideo()">
+                    🎥 Записать кружок
+                </button>
+                <button class="btn-secondary" onclick="window.uploadFromGallery()">
+                    📁 Загрузить из галереи
+                </button>
+            </div>
+            <div id="previewContainer" class="preview-container hidden"></div>
+            <div class="upload-tips">
+                <h4>💡 Советы:</h4>
+                <ul>
+                    <li>Максимальная длина: 60 секунд</li>
+                    <li>После загрузки видео уйдёт на модерацию</li>
+                    <li>18+ контент будет помечен соответствующим образом</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// Запись видео
+window.recordVideo = async function() {
     stopRecording();
     
     try {
-        // Запрашиваем доступ к камере и микрофону
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 width: { ideal: 640 },
@@ -23,7 +258,6 @@ async function recordVideo() {
         
         recordingStream = stream;
         
-        // Создаём preview видео
         const video = document.createElement('video');
         video.srcObject = stream;
         video.autoplay = true;
@@ -35,7 +269,6 @@ async function recordVideo() {
         container.appendChild(video);
         container.classList.remove('hidden');
         
-        // Создаём кнопки управления
         const controls = document.createElement('div');
         controls.className = 'record-controls';
         controls.innerHTML = `
@@ -50,11 +283,7 @@ async function recordVideo() {
         `;
         container.appendChild(controls);
         
-        // Инициализируем MediaRecorder
-        mediaRecorder = new MediaRecorder(stream, {
-            mimeType: MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm'
-        });
-        
+        mediaRecorder = new MediaRecorder(stream);
         recordedChunks = [];
         
         mediaRecorder.ondataavailable = (event) => {
@@ -63,124 +292,74 @@ async function recordVideo() {
             }
         };
         
-        mediaRecorder.onstop = async () => {
-            // Останавливаем таймер
+        mediaRecorder.onstop = () => {
             if (recordingTimer) {
                 clearInterval(recordingTimer);
                 recordingTimer = null;
             }
-            
-            if (recordedChunks.length === 0) {
-                console.log('Нет записанных данных');
-                return;
+            if (recordedChunks.length > 0) {
+                const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                showPreviewAndConfirm(blob);
             }
-            
-            // Создаём blob из записанных данных
-            const blob = new Blob(recordedChunks, { 
-                type: mediaRecorder.mimeType 
-            });
-            
-            // Показываем превью перед отправкой
-            showPreviewAndConfirm(blob);
         };
         
-        // Запускаем запись
-        mediaRecorder.start(1000); // Собираем данные каждую секунду
+        mediaRecorder.start(1000);
         recordingSeconds = 0;
         
-        // Обновляем таймер
         recordingTimer = setInterval(() => {
             recordingSeconds++;
-            const minutes = Math.floor(recordingSeconds / 60);
-            const seconds = recordingSeconds % 60;
-            const timerElement = controls.querySelector('.timer');
-            if (timerElement) {
-                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
+            const mins = Math.floor(recordingSeconds / 60);
+            const secs = recordingSeconds % 60;
+            const timerEl = controls.querySelector('.timer');
+            if (timerEl) timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
             
-            // Обновляем прогресс-бар (максимум 60 секунд)
             const progressFill = controls.querySelector('.progress-fill');
             if (progressFill) {
                 const percent = (recordingSeconds / 60) * 100;
                 progressFill.style.width = `${Math.min(percent, 100)}%`;
             }
             
-            // Автоматическая остановка через 60 секунд
             if (recordingSeconds >= 60) {
                 stopRecording();
             }
         }, 1000);
         
-        // Кнопка остановки
-        document.getElementById('stopRecordBtn').addEventListener('click', () => {
-            stopRecording();
-        });
-        
-        // Кнопка отмены
-        document.getElementById('cancelRecordBtn').addEventListener('click', () => {
-            cancelRecording();
-        });
+        document.getElementById('stopRecordBtn').onclick = () => stopRecording();
+        document.getElementById('cancelRecordBtn').onclick = () => cancelRecording();
         
     } catch (error) {
         console.error('Camera error:', error);
         tg.showPopup({
             title: 'Ошибка',
-            message: 'Не удалось получить доступ к камере. Проверьте разрешения.',
+            message: 'Не удалось получить доступ к камере',
             buttons: [{ type: 'ok' }]
         });
     }
-}
+};
 
-// Остановка записи
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
-    
     if (recordingTimer) {
         clearInterval(recordingTimer);
         recordingTimer = null;
     }
-    
     if (recordingStream) {
         recordingStream.getTracks().forEach(track => track.stop());
         recordingStream = null;
     }
 }
 
-// Отмена записи
 function cancelRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.onstop = null; // Предотвращаем обработку
-        mediaRecorder.stop();
-    }
-    
-    if (recordingTimer) {
-        clearInterval(recordingTimer);
-        recordingTimer = null;
-    }
-    
-    if (recordingStream) {
-        recordingStream.getTracks().forEach(track => track.stop());
-        recordingStream = null;
-    }
-    
+    if (mediaRecorder) mediaRecorder.onstop = null;
+    stopRecording();
     recordedChunks = [];
-    mediaRecorder = null;
-    
-    // Скрываем превью
     const container = document.getElementById('previewContainer');
     container.classList.add('hidden');
     container.innerHTML = '';
-    
-    tg.showPopup({
-        title: 'Отмена',
-        message: 'Запись отменена',
-        buttons: [{ type: 'ok' }]
-    });
 }
 
-// Показать превью перед отправкой
 function showPreviewAndConfirm(blob) {
     const videoURL = URL.createObjectURL(blob);
     const container = document.getElementById('previewContainer');
@@ -189,46 +368,141 @@ function showPreviewAndConfirm(blob) {
         <div class="preview-wrapper">
             <video src="${videoURL}" controls autoplay loop></video>
             <div class="preview-buttons">
-                <button class="btn-primary" onclick="confirmUpload('${videoURL}')">✅ Отправить</button>
-                <button class="btn-secondary" onclick="retakeVideo()">🔄 Переснять</button>
+                <button class="btn-primary" onclick="window.confirmUpload('${videoURL}')">✅ Отправить</button>
+                <button class="btn-secondary" onclick="window.retakeVideo()">🔄 Переснять</button>
             </div>
         </div>
     `;
-    
-    recordingStream = null;
-    mediaRecorder = null;
 }
 
-// Подтверждение загрузки
-async function confirmUpload(videoURL) {
-    // Получаем blob из URL
+window.confirmUpload = async function(videoURL) {
     const response = await fetch(videoURL);
     const blob = await response.blob();
-    
-    // Создаём файл
     const file = new File([blob], `circle_${Date.now()}.mp4`, { type: 'video/mp4' });
-    
-    // Загружаем
     await uploadVideo(file);
-    
-    // Очищаем
     URL.revokeObjectURL(videoURL);
-    const container = document.getElementById('previewContainer');
-    container.classList.add('hidden');
-}
+    document.getElementById('previewContainer').classList.add('hidden');
+};
 
-// Переснять видео
-function retakeVideo() {
-    // Очищаем
-    if (recordingStream) {
-        recordingStream.getTracks().forEach(track => track.stop());
-        recordingStream = null;
-    }
-    
+window.retakeVideo = function() {
     const container = document.getElementById('previewContainer');
     container.classList.add('hidden');
     container.innerHTML = '';
+    window.recordVideo();
+};
+
+// Загрузка из галереи
+window.uploadFromGallery = function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file.size > 50 * 1024 * 1024) {
+            tg.showPopup({
+                title: 'Ошибка',
+                message: 'Видео слишком большое! Максимум 50 МБ',
+                buttons: [{ type: 'ok' }]
+            });
+            return;
+        }
+        await uploadVideo(file);
+    };
+    input.click();
+};
+
+// Загрузка на сервер
+async function uploadVideo(file) {
+    tg.showPopup({
+        title: 'Загрузка',
+        message: 'Видео загружается...',
+        buttons: [{ type: 'ok' }]
+    });
     
-    // Начинаем запись заново
-    recordVideo();
+    const formData = new FormData();
+    formData.append('video', file);
+    formData.append('user_telegram_id', currentUserId);
+    
+    try {
+        const response = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            tg.showPopup({
+                title: 'Успех!',
+                message: 'Видео отправлено на модерацию',
+                buttons: [{ type: 'ok' }]
+            });
+            switchTab('feed');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        tg.showPopup({
+            title: 'Ошибка',
+            message: 'Не удалось загрузить видео',
+            buttons: [{ type: 'ok' }]
+        });
+    }
 }
+
+// Переключение вкладок
+window.switchTab = function(tab) {
+    currentTab = tab;
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        }
+    });
+    
+    switch(tab) {
+        case 'feed':
+            includeAdult = false;
+            loadFeed();
+            break;
+        case 'adult':
+            includeAdult = true;
+            loadFeed();
+            break;
+        case 'favorites':
+            loadFavorites();
+            break;
+        case 'profile':
+            loadProfile();
+            break;
+        case 'upload':
+            showUploadInterface();
+            break;
+    }
+};
+
+// Вспомогательные функции
+function showLoading() {
+    const content = document.getElementById('content');
+    if (content) content.innerHTML = '<div class="loading">⏳ Загрузка...</div>';
+}
+
+function showError(message) {
+    const content = document.getElementById('content');
+    if (content) content.innerHTML = `<div class="error">❌ ${message}</div>`;
+}
+
+// Запуск
+registerUser();
+window.switchTab = window.switchTab.bind(window);
+window.toggleLike = window.toggleLike.bind(window);
+window.toggleFavorite = window.toggleFavorite.bind(window);
+window.editProfile = window.editProfile.bind(window);
+window.recordVideo = window.recordVideo.bind(window);
+window.uploadFromGallery = window.uploadFromGallery.bind(window);
+window.confirmUpload = window.confirmUpload.bind(window);
+window.retakeVideo = window.retakeVideo.bind(window);
+
+switchTab('feed');
