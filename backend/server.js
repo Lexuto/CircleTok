@@ -267,7 +267,7 @@ async function start() {
     
     console.log('\n📋 ПРОВЕРКА НАСТРОЕК:');
     console.log(`🤖 BOT_TOKEN: ${process.env.BOT_TOKEN ? '✅' : '❌'}`);
-    console log(`👤 MODERATOR_ID: ${MODERATOR_ID || '❌'}`);
+    console.log(`👤 MODERATOR_ID: ${MODERATOR_ID || '❌'}`);
     console.log(`📢 CHANNEL_PENDING: ${CHANNEL_PENDING}`);
     console.log(`✅ CHANNEL_APPROVED: ${CHANNEL_APPROVED}`);
     console.log(`🔞 CHANNEL_ADULT: ${CHANNEL_ADULT}`);
