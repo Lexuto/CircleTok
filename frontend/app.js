@@ -1,6 +1,6 @@
 // Получаем данные пользователя из Telegram
 const tg = window.Telegram.WebApp;
-const user = tg.initDataUnsafe?.user || { id: 123456, username: 'user', first_name: 'User' };
+const user = tg.initDataUnsafe?.user || { id: Math.floor(Math.random() * 1000000), username: 'user', first_name: 'User' };
 
 // API URL (замени на свой при деплое)
 const API_URL = 'https://circletok.onrender.com/api';
@@ -23,6 +23,25 @@ let recordingSeconds = 0;
 // Инициализация
 tg.expand();
 tg.ready();
+
+// Показ уведомлений (без popup)
+function showMessage(title, message) {
+    // Создаём временное уведомление
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.innerHTML = `
+        <div class="notification-title">${title}</div>
+        <div class="notification-message">${message}</div>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.classList.add('show');
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 2000);
+    }, 10);
+}
 
 // Регистрация пользователя
 async function registerUser() {
@@ -147,21 +166,13 @@ function setupVideoObserver() {
 // Лайк
 window.toggleLike = async function(videoId) {
     console.log('Like:', videoId);
-    tg.showPopup({
-        title: 'Функция в разработке',
-        message: 'Лайки появятся после подключения Mini App',
-        buttons: [{ type: 'ok' }]
-    });
+    showMessage('ℹ️', 'Лайки появятся после подключения Mini App');
 };
 
 // Избранное
 window.toggleFavorite = async function(videoId) {
     console.log('Favorite:', videoId);
-    tg.showPopup({
-        title: 'Функция в разработке',
-        message: 'Избранное появится после подключения Mini App',
-        buttons: [{ type: 'ok' }]
-    });
+    showMessage('ℹ️', 'Избранное появится после подключения Mini App');
 };
 
 // Загрузка избранного
@@ -206,11 +217,7 @@ async function loadProfile() {
 }
 
 window.editProfile = function() {
-    tg.showPopup({
-        title: 'Редактирование',
-        message: 'Функция в разработке',
-        buttons: [{ type: 'ok' }]
-    });
+    showMessage('ℹ️', 'Редактирование профиля в разработке');
 };
 
 // Интерфейс загрузки
@@ -329,11 +336,7 @@ window.recordVideo = async function() {
         
     } catch (error) {
         console.error('Camera error:', error);
-        tg.showPopup({
-            title: 'Ошибка',
-            message: 'Не удалось получить доступ к камере',
-            buttons: [{ type: 'ok' }]
-        });
+        showMessage('❌ Ошибка', 'Не удалось получить доступ к камере');
     }
 };
 
@@ -399,11 +402,7 @@ window.uploadFromGallery = function() {
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (file.size > 50 * 1024 * 1024) {
-            tg.showPopup({
-                title: 'Ошибка',
-                message: 'Видео слишком большое! Максимум 50 МБ',
-                buttons: [{ type: 'ok' }]
-            });
+            showMessage('❌ Ошибка', 'Видео слишком большое! Максимум 50 МБ');
             return;
         }
         await uploadVideo(file);
@@ -413,11 +412,7 @@ window.uploadFromGallery = function() {
 
 // Загрузка на сервер
 async function uploadVideo(file) {
-    tg.showPopup({
-        title: 'Загрузка',
-        message: 'Видео загружается...',
-        buttons: [{ type: 'ok' }]
-    });
+    showMessage('📤 Загрузка', 'Видео загружается...');
     
     const formData = new FormData();
     formData.append('video', file);
@@ -432,22 +427,14 @@ async function uploadVideo(file) {
         const result = await response.json();
         
         if (result.success) {
-            tg.showPopup({
-                title: 'Успех!',
-                message: 'Видео отправлено на модерацию',
-                buttons: [{ type: 'ok' }]
-            });
-            switchTab('feed');
+            showMessage('✅ Успех!', 'Видео отправлено на модерацию');
+            setTimeout(() => switchTab('feed'), 1500);
         } else {
             throw new Error(result.error);
         }
     } catch (error) {
         console.error('Upload error:', error);
-        tg.showPopup({
-            title: 'Ошибка',
-            message: 'Не удалось загрузить видео',
-            buttons: [{ type: 'ok' }]
-        });
+        showMessage('❌ Ошибка', 'Не удалось загрузить видео');
     }
 }
 
@@ -496,6 +483,8 @@ function showError(message) {
 
 // Запуск
 registerUser();
+
+// Привязываем функции к window
 window.switchTab = window.switchTab.bind(window);
 window.toggleLike = window.toggleLike.bind(window);
 window.toggleFavorite = window.toggleFavorite.bind(window);
@@ -505,4 +494,5 @@ window.uploadFromGallery = window.uploadFromGallery.bind(window);
 window.confirmUpload = window.confirmUpload.bind(window);
 window.retakeVideo = window.retakeVideo.bind(window);
 
-switchTab('feed');
+// Загружаем ленту
+setTimeout(() => switchTab('feed'), 100);
