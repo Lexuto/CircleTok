@@ -24,16 +24,16 @@ export async function initializeDB() {
   // Таблица видео
   await db.exec(`
     CREATE TABLE IF NOT EXISTS videos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      drive_file_id TEXT UNIQUE,
-      user_telegram_id TEXT,
-      status TEXT DEFAULT 'pending', -- pending, approved, adult, rejected
-      likes_count INTEGER DEFAULT 0,
-      views_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      approved_at DATETIME
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        drive_file_id TEXT,
+        user_telegram_id TEXT,
+        status TEXT DEFAULT 'pending',
+        likes_count INTEGER DEFAULT 0,
+        views_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        approved_at DATETIME
     )
-  `);
+`);
 
   // Таблица лайков
   await db.exec(`
