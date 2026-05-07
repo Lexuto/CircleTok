@@ -15,6 +15,29 @@ bot.start((ctx) => {
     );
 });
 
+// Команда для проверки что бот знает модератора
+bot.command('moderate', async (ctx) => {
+    const userId = ctx.from.id.toString();
+    const moderatorId = process.env.MODERATOR_ID;
+    
+    console.log(`🔍 Команда /moderate от ${userId}`);
+    console.log(`📝 Ожидаемый модератор: ${moderatorId}`);
+    
+    if (userId !== moderatorId) {
+        return ctx.reply(`⛔ У вас нет доступа к модерации!\n\nВаш ID: ${userId}\nID модератора: ${moderatorId}`);
+    }
+    
+    await ctx.reply(
+        `🛠 ПАНЕЛЬ МОДЕРАТОРА\n\n` +
+        `✅ Ваш ID подтверждён: ${userId}\n\n` +
+        `Когда пользователи загружают видео, я присылаю тебе кнопки.\n\n` +
+        `Если кнопки не приходят, проверь:\n` +
+        `1. Бот добавлен в канал @CircleTokpending\n` +
+        `2. У бота есть права администратора в канале\n` +
+        `3. Ты написал /start этому боту`
+    );
+});
+
 // Информация о модерации
 bot.command('moderate', async (ctx) => {
     if (ctx.from.id.toString() !== MODERATOR_ID) {
