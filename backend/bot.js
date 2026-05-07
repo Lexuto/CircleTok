@@ -4,7 +4,8 @@ dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MODERATOR_ID = process.env.MODERATOR_ID;
-const API_URL = process.env.API_URL || 'https://circletok.onrender.com';
+// Используем локальный адрес, так как бот и API на одном сервере
+const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 if (!BOT_TOKEN) {
     console.error('❌ BOT_TOKEN не найден');
@@ -28,6 +29,7 @@ bot.start(async (ctx) => {
                 first_name: user.first_name || 'Аноним'
             })
         });
+        console.log(`✅ Зарегистрирован: ${user.first_name}`);
     } catch (error) {
         console.error('Reg error:', error.message);
     }
@@ -53,17 +55,25 @@ bot.action(/approve_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
     const userId = ctx.from.id.toString();
     
+    console.log(`📹 Попытка одобрить видео ${videoId} от пользователя ${userId}`);
+    
     // Проверяем, что это модератор
     if (userId !== MODERATOR_ID) {
+        console.log(`❌ Отказано: пользователь ${userId} не модератор`);
         return ctx.answerCbQuery('⛔ У вас нет прав модератора');
     }
     
     try {
+        console.log(`📡 Отправка запроса к ${API_URL}/api/moderate`);
+        
         const response = await fetch(`${API_URL}/api/moderate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ video_id: videoId, status: 'approved' })
+            body: JSON.stringify({ video_id: parseInt(videoId), status: 'approved' })
         });
+        
+        const data = await response.json();
+        console.log(`📡 Ответ сервера:`, data);
         
         if (response.ok) {
             await ctx.answerCbQuery('✅ Видео одобрено!');
@@ -72,11 +82,11 @@ bot.action(/approve_(.+)/, async (ctx) => {
             );
             console.log(`✅ Видео ${videoId} одобрено`);
         } else {
-            await ctx.answerCbQuery('❌ Ошибка при одобрении');
+            await ctx.answerCbQuery(`❌ Ошибка: ${data.error || 'неизвестная'}`);
         }
     } catch (error) {
-        console.error('Approve error:', error);
-        await ctx.answerCbQuery('❌ Ошибка сервера');
+        console.error('❌ Approve error:', error.message);
+        await ctx.answerCbQuery('❌ Ошибка соединения с сервером');
     }
 });
 
@@ -84,6 +94,8 @@ bot.action(/approve_(.+)/, async (ctx) => {
 bot.action(/adult_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
     const userId = ctx.from.id.toString();
+    
+    console.log(`🔞 Попытка отправить в 18+ видео ${videoId}`);
     
     if (userId !== MODERATOR_ID) {
         return ctx.answerCbQuery('⛔ У вас нет прав модератора');
@@ -93,7 +105,7 @@ bot.action(/adult_(.+)/, async (ctx) => {
         const response = await fetch(`${API_URL}/api/moderate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ video_id: videoId, status: 'adult' })
+            body: JSON.stringify({ video_id: parseInt(videoId), status: 'adult' })
         });
         
         if (response.ok) {
@@ -106,8 +118,8 @@ bot.action(/adult_(.+)/, async (ctx) => {
             await ctx.answerCbQuery('❌ Ошибка при отправке');
         }
     } catch (error) {
-        console.error('Adult error:', error);
-        await ctx.answerCbQuery('❌ Ошибка сервера');
+        console.error('Adult error:', error.message);
+        await ctx.answerCbQuery('❌ Ошибка соединения');
     }
 });
 
@@ -115,6 +127,8 @@ bot.action(/adult_(.+)/, async (ctx) => {
 bot.action(/reject_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
     const userId = ctx.from.id.toString();
+    
+    console.log(`❌ Попытка отклонить видео ${videoId}`);
     
     if (userId !== MODERATOR_ID) {
         return ctx.answerCbQuery('⛔ У вас нет прав модератора');
@@ -124,7 +138,7 @@ bot.action(/reject_(.+)/, async (ctx) => {
         const response = await fetch(`${API_URL}/api/moderate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ video_id: videoId, status: 'rejected' })
+            body: JSON.stringify({ video_id: parseInt(videoId), status: 'rejected' })
         });
         
         if (response.ok) {
@@ -137,12 +151,12 @@ bot.action(/reject_(.+)/, async (ctx) => {
             await ctx.answerCbQuery('❌ Ошибка при отклонении');
         }
     } catch (error) {
-        console.error('Reject error:', error);
-        await ctx.answerCbQuery('❌ Ошибка сервера');
+        console.error('Reject error:', error.message);
+        await ctx.answerCbQuery('❌ Ошибка соединения');
     }
 });
 
-// Команда для проверки (только для модератора)
+// Команда для проверки
 bot.command('moderate', async (ctx) => {
     const userId = ctx.from.id.toString();
     if (userId !== MODERATOR_ID) {
@@ -151,6 +165,8 @@ bot.command('moderate', async (ctx) => {
     
     await ctx.reply(
         '🛠 Панель модератора активна\n\n' +
+        `API URL: ${API_URL}\n` +
+        `Модератор ID: ${MODERATOR_ID}\n\n` +
         'Когда пользователи загружают видео, они приходят в этот чат.\n' +
         'Нажми на кнопки под видео, чтобы:\n' +
         '✅ - одобрить в общую ленту\n' +
@@ -159,12 +175,13 @@ bot.command('moderate', async (ctx) => {
     );
 });
 
-// Удаляем вебхук и запускаем
+// Запуск
 bot.telegram.deleteWebhook().then(() => {
     console.log('✅ Webhook удалён');
     bot.launch();
     console.log('🤖 Бот CircleTok запущен!');
     console.log(`📝 Модератор: ${MODERATOR_ID}`);
+    console.log(`🔗 API URL: ${API_URL}`);
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
