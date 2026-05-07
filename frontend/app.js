@@ -3,7 +3,7 @@ const tg = window.Telegram.WebApp;
 const user = tg.initDataUnsafe?.user || { id: 123456, username: 'user', first_name: 'User' };
 
 // API URL (замени на свой при деплое)
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://circle-tok-api.onrender.com/api';
 
 // Глобальное состояние
 let currentTab = 'feed';
