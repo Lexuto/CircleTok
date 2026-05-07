@@ -47,30 +47,90 @@ async function initDB() {
     console.log('✅ DB ready');
 }
 
-// Бот для модерации
+// Инициализируем бота
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-async function sendToModeration(buffer, userId, username, videoId) {
-    const msg = await bot.telegram.sendVideoNote('@CircleTokpending', { source: buffer }, { duration: 60, length: 640 });
-    await bot.telegram.sendMessage('@CircleTokpending', `👤 @${username}\n🎬 #${videoId}`);
-    
-    const keyboard = {
-        inline_keyboard: [
-            [{ text: "✅ Общая лента", callback_data: `approve_${videoId}` }, { text: "🔞 18+", callback_data: `adult_${videoId}` }],
-            [{ text: "❌ Отклонить", callback_data: `reject_${videoId}` }]
-        ]
-    };
-    await bot.telegram.sendMessage(process.env.MODERATOR_ID, `📹 Новое видео от @${username}\nID: ${videoId}`, { reply_markup: keyboard });
-    return msg.video_note.file_id;
+// Проверка подключения бота
+bot.telegram.getMe().then((botInfo) => {
+    console.log(`🤖 Бот @${botInfo.username} запущен`);
+}).catch((err) => {
+    console.error('❌ Ошибка подключения бота:', err.message);
+});
+
+// Функция отправки на модерацию с отладкой
+async function sendToModeration(videoBuffer, userId, username, videoId) {
+    try {
+        console.log(`📹 Отправляем видео в канал ${process.env.CHANNEL_PENDING}`);
+        
+        // Проверяем, что канал существует
+        const channelName = process.env.CHANNEL_PENDING;
+        if (!channelName) {
+            throw new Error('CHANNEL_PENDING не задан в .env');
+        }
+        
+        // Отправляем видео как кружок
+        const message = await bot.telegram.sendVideoNote(
+            channelName,
+            { source: videoBuffer },
+            { duration: 60, length: 640 }
+        );
+        
+        console.log(`✅ Видео отправлено, message_id: ${message.message_id}`);
+        
+        if (!message.video_note) {
+            throw new Error('Ответ не содержит video_note');
+        }
+        
+        const fileId = message.video_note.file_id;
+        console.log(`📁 file_id получен: ${fileId}`);
+        
+        // Отправляем информацию о пользователе
+        await bot.telegram.sendMessage(
+            channelName,
+            `👤 Пользователь: @${username}\n🆔 ID: ${userId}\n🎬 Видео #${videoId}\n📅 ${new Date().toLocaleString()}`
+        );
+        
+        // Отправляем уведомление модератору
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: "✅ В общую ленту", callback_data: `approve_${videoId}` },
+                    { text: "🔞 В 18+", callback_data: `adult_${videoId}` }
+                ],
+                [
+                    { text: "❌ Отклонить", callback_data: `reject_${videoId}` }
+                ]
+            ]
+        };
+        
+        await bot.telegram.sendMessage(
+            process.env.MODERATOR_ID,
+            `📹 НОВОЕ ВИДЕО НА МОДЕРАЦИЮ!\n\n👤 От: @${username}\n🆔 ID видео: ${videoId}\n📅 ${new Date().toLocaleString()}\n\n📹 Видео в канале: ${channelName}`,
+            { reply_markup: keyboard }
+        );
+        
+        console.log(`✅ Уведомление отправлено модератору`);
+        
+        return fileId;
+        
+    } catch (error) {
+        console.error('❌ Ошибка в sendToModeration:', error.message);
+        console.error('Полная ошибка:', error);
+        throw error;
+    }
 }
 
-// API
+// API endpoints
 app.post('/api/user', async (req, res) => {
     try {
         const { telegram_id, username, first_name } = req.body;
-        await db.run('INSERT OR IGNORE INTO users (telegram_id, username, first_name) VALUES (?, ?, ?)', [telegram_id, username, first_name]);
+        await db.run(
+            'INSERT OR IGNORE INTO users (telegram_id, username, first_name) VALUES (?, ?, ?)',
+            [telegram_id, username, first_name]
+        );
         res.json({ success: true });
     } catch (error) {
+        console.error('User error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -78,20 +138,32 @@ app.post('/api/user', async (req, res) => {
 app.post('/api/upload', upload.single('video'), async (req, res) => {
     try {
         const { user_telegram_id } = req.body;
-        const buffer = req.file.buffer;
+        const videoBuffer = req.file.buffer;
         
+        console.log(`📹 Получено видео от ${user_telegram_id}, размер: ${videoBuffer.length} bytes`);
+        
+        // Получаем пользователя
         const user = await db.get('SELECT username FROM users WHERE telegram_id = ?', [user_telegram_id]);
         const username = user?.username || 'unknown';
         
-        const result = await db.run('INSERT INTO videos (user_telegram_id) VALUES (?)', [user_telegram_id]);
+        // Сохраняем в БД
+        const result = await db.run('INSERT INTO videos (user_telegram_id, status) VALUES (?, ?)', [user_telegram_id, 'pending']);
         const videoId = result.lastID;
         
-        const fileId = await sendToModeration(buffer, user_telegram_id, username, videoId);
+        console.log(`📝 Видео #${videoId} создано в БД`);
+        
+        // Отправляем на модерацию
+        const fileId = await sendToModeration(videoBuffer, user_telegram_id, username, videoId);
+        
+        // Обновляем file_id
         await db.run('UPDATE videos SET file_id = ? WHERE id = ?', [fileId, videoId]);
         
+        console.log(`✅ Видео #${videoId} успешно загружено, file_id: ${fileId}`);
+        
         res.json({ success: true, video_id: videoId });
+        
     } catch (error) {
-        console.error(error);
+        console.error('❌ Upload error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -101,12 +173,16 @@ app.get('/api/feed', async (req, res) => {
         const adult = req.query.adult === 'true';
         const videos = await db.all(`
             SELECT v.*, u.username, u.first_name 
-            FROM videos v JOIN users u ON u.telegram_id = v.user_telegram_id 
+            FROM videos v 
+            JOIN users u ON u.telegram_id = v.user_telegram_id 
             WHERE v.status IN ('approved', ?)
-            ORDER BY v.created_at DESC LIMIT 30
+            ORDER BY v.created_at DESC 
+            LIMIT 30
         `, [adult ? 'adult' : 'approved']);
+        
         res.json(videos);
     } catch (error) {
+        console.error('Feed error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -114,14 +190,45 @@ app.get('/api/feed', async (req, res) => {
 app.post('/api/moderate', async (req, res) => {
     try {
         const { video_id, status } = req.body;
+        console.log(`📝 Обновление статуса видео ${video_id} -> ${status}`);
+        
         await db.run('UPDATE videos SET status = ? WHERE id = ?', [status, video_id]);
+        
+        // Если статус approved или adult, можно отправить в соответствующий канал
+        if (status === 'approved') {
+            console.log(`✅ Видео ${video_id} одобрено в общую ленту`);
+        } else if (status === 'adult') {
+            console.log(`🔞 Видео ${video_id} отправлено в 18+`);
+        } else if (status === 'rejected') {
+            console.log(`❌ Видео ${video_id} отклонено`);
+        }
+        
         res.json({ success: true });
     } catch (error) {
+        console.error('Moderate error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 // Запуск
-initDB().then(() => {
-    app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
-});
+async function start() {
+    await initDB();
+    
+    // Проверяем наличие необходимых переменных
+    console.log('\n📋 Проверка окружения:');
+    console.log(`CHANNEL_PENDING: ${process.env.CHANNEL_PENDING || '❌ не задан'}`);
+    console.log(`MODERATOR_ID: ${process.env.MODERATOR_ID || '❌ не задан'}`);
+    console.log(`BOT_TOKEN: ${process.env.BOT_TOKEN ? '✅ задан' : '❌ не задан'}`);
+    
+    if (!process.env.CHANNEL_PENDING) {
+        console.error('❌ ОШИБКА: CHANNEL_PENDING не задан в .env!');
+        console.log('Добавьте CHANNEL_PENDING=@CircleTokpending в переменные окружения');
+    }
+    
+    app.listen(PORT, () => {
+        console.log(`\n🚀 Сервер запущен на порту ${PORT}`);
+        console.log(`📱 Mini App доступен по адресу: https://circletok.onrender.com`);
+    });
+}
+
+start();
