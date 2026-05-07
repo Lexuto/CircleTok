@@ -6,60 +6,48 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const API_URL = process.env.API_URL || 'https://circletok.onrender.com';
 const MODERATOR_ID = process.env.MODERATOR_ID;
 
+console.log(`🤖 Запуск бота...`);
+console.log(`👤 Модератор ID: ${MODERATOR_ID}`);
+
 bot.start((ctx) => {
-    ctx.reply(
-        `🎬 CircleTok бот работает!\n\n` +
-        `📹 Команды модератора:\n` +
-        `/pending - Посмотреть видео на модерации\n` +
-        `/moderate - Информация о модерации`
-    );
+    const userId = ctx.from.id.toString();
+    console.log(`📝 /start от ${userId}`);
+    
+    if (userId === MODERATOR_ID) {
+        ctx.reply(`🎬 Привет, Модератор!\n\nТвой ID: ${userId}\n\nИспользуй /moderate для панели`);
+    } else {
+        ctx.reply(`🎬 Добро пожаловать в CircleTok!\n\nТвой ID: ${userId}\n\nСкоро здесь появится Mini App!`);
+    }
 });
 
-// Команда для проверки что бот знает модератора
+// Панель модератора
 bot.command('moderate', async (ctx) => {
     const userId = ctx.from.id.toString();
-    const moderatorId = process.env.MODERATOR_ID;
     
-    console.log(`🔍 Команда /moderate от ${userId}`);
-    console.log(`📝 Ожидаемый модератор: ${moderatorId}`);
-    
-    if (userId !== moderatorId) {
-        return ctx.reply(`⛔ У вас нет доступа к модерации!\n\nВаш ID: ${userId}\nID модератора: ${moderatorId}`);
+    if (userId !== MODERATOR_ID) {
+        return ctx.reply(`⛔ Нет доступа!\n\nВаш ID: ${userId}\nНужен ID: ${MODERATOR_ID}`);
     }
     
     await ctx.reply(
         `🛠 ПАНЕЛЬ МОДЕРАТОРА\n\n` +
-        `✅ Ваш ID подтверждён: ${userId}\n\n` +
-        `Когда пользователи загружают видео, я присылаю тебе кнопки.\n\n` +
-        `Если кнопки не приходят, проверь:\n` +
-        `1. Бот добавлен в канал @CircleTokpending\n` +
-        `2. У бота есть права администратора в канале\n` +
-        `3. Ты написал /start этому боту`
-    );
-});
-
-// Информация о модерации
-bot.command('moderate', async (ctx) => {
-    if (ctx.from.id.toString() !== MODERATOR_ID) {
-        return ctx.reply('⛔ Нет доступа');
-    }
-    await ctx.reply(
-        `🛠 ПАНЕЛЬ МОДЕРАТОРА\n\n` +
-        `Как работает модерация:\n` +
+        `✅ Вы авторизованы как модератор\n\n` +
+        `📹 Как работает модерация:\n` +
         `1. Пользователь загружает видео\n` +
         `2. Видео появляется в канале @CircleTokpending\n` +
-        `3. Тебе приходят кнопки под видео\n` +
+        `3. Тебе сюда приходят КНОПКИ под видео\n` +
         `4. Нажми на кнопку:\n` +
         `   ✅ - в общую ленту\n` +
         `   🔞 - в раздел 18+\n` +
         `   ❌ - отклонить\n\n` +
-        `Также можешь использовать команду /pending`
+        `⚠️ Если кнопки НЕ приходят — проверь что бот админ в канале @CircleTokpending`
     );
 });
 
-// Показать все видео на модерации
+// Показать видео на модерации
 bot.command('pending', async (ctx) => {
-    if (ctx.from.id.toString() !== MODERATOR_ID) {
+    const userId = ctx.from.id.toString();
+    
+    if (userId !== MODERATOR_ID) {
         return ctx.reply('⛔ Нет доступа');
     }
     
@@ -71,14 +59,12 @@ bot.command('pending', async (ctx) => {
             return ctx.reply('📭 Нет видео на модерации');
         }
         
-        await ctx.reply(`📹 Найдено видео на модерации: ${videos.length}\n\nОбработай их с помощью кнопок:`);
-        
         for (const video of videos) {
             const keyboard = {
                 inline_keyboard: [
                     [
-                        { text: "✅ В ОБЩУЮ ЛЕНТУ", callback_data: `approve_${video.id}` },
-                        { text: "🔞 В 18+", callback_data: `adult_${video.id}` }
+                        { text: "✅ ОДОБРИТЬ", callback_data: `approve_${video.id}` },
+                        { text: "🔞 18+", callback_data: `adult_${video.id}` }
                     ],
                     [
                         { text: "❌ ОТКЛОНИТЬ", callback_data: `reject_${video.id}` }
@@ -97,18 +83,19 @@ bot.command('pending', async (ctx) => {
         }
     } catch (error) {
         console.error('Pending error:', error);
-        ctx.reply('❌ Ошибка загрузки списка');
+        ctx.reply('❌ Ошибка загрузки');
     }
 });
 
 // === ОБРАБОТЧИКИ КНОПОК ===
-
-// Одобрение в общую ленту
 bot.action(/approve_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
+    const userId = ctx.from.id.toString();
     
-    if (ctx.from.id.toString() !== MODERATOR_ID) {
-        return ctx.answerCbQuery('⛔ У вас нет прав модератора');
+    console.log(`📹 Кнопка "Одобрить" от ${userId} для видео ${videoId}`);
+    
+    if (userId !== MODERATOR_ID) {
+        return ctx.answerCbQuery(`⛔ Вы не модератор! Ваш ID: ${userId}`);
     }
     
     try {
@@ -122,7 +109,6 @@ bot.action(/approve_(.+)/, async (ctx) => {
         await ctx.editMessageText(
             ctx.update.callback_query.message.text + '\n\n✅ ОДОБРЕНО В ОБЩУЮ ЛЕНТУ'
         );
-        await ctx.reply(`✅ Видео #${videoId} опубликовано в общей ленте!`);
         
     } catch (error) {
         console.error('Approve error:', error);
@@ -130,12 +116,12 @@ bot.action(/approve_(.+)/, async (ctx) => {
     }
 });
 
-// Отправка в 18+
 bot.action(/adult_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
+    const userId = ctx.from.id.toString();
     
-    if (ctx.from.id.toString() !== MODERATOR_ID) {
-        return ctx.answerCbQuery('⛔ У вас нет прав модератора');
+    if (userId !== MODERATOR_ID) {
+        return ctx.answerCbQuery('⛔ Нет прав');
     }
     
     try {
@@ -145,11 +131,10 @@ bot.action(/adult_(.+)/, async (ctx) => {
             body: JSON.stringify({ video_id: parseInt(videoId), status: 'adult' })
         });
         
-        await ctx.answerCbQuery('🔞 Видео отправлено в 18+');
+        await ctx.answerCbQuery('🔞 Видео в 18+');
         await ctx.editMessageText(
             ctx.update.callback_query.message.text + '\n\n🔞 ОТПРАВЛЕНО В 18+'
         );
-        await ctx.reply(`🔞 Видео #${videoId} отправлено в раздел 18+`);
         
     } catch (error) {
         console.error('Adult error:', error);
@@ -157,12 +142,12 @@ bot.action(/adult_(.+)/, async (ctx) => {
     }
 });
 
-// Отклонение
 bot.action(/reject_(.+)/, async (ctx) => {
     const videoId = ctx.match[1];
+    const userId = ctx.from.id.toString();
     
-    if (ctx.from.id.toString() !== MODERATOR_ID) {
-        return ctx.answerCbQuery('⛔ У вас нет прав модератора');
+    if (userId !== MODERATOR_ID) {
+        return ctx.answerCbQuery('⛔ Нет прав');
     }
     
     try {
@@ -176,7 +161,6 @@ bot.action(/reject_(.+)/, async (ctx) => {
         await ctx.editMessageText(
             ctx.update.callback_query.message.text + '\n\n❌ ОТКЛОНЕНО'
         );
-        await ctx.reply(`❌ Видео #${videoId} отклонено`);
         
     } catch (error) {
         console.error('Reject error:', error);
@@ -184,12 +168,13 @@ bot.action(/reject_(.+)/, async (ctx) => {
     }
 });
 
-// Запуск бота
+// Запуск
 bot.telegram.deleteWebhook().then(() => {
     console.log('✅ Webhook удалён');
     bot.launch();
     console.log('🤖 Бот запущен!');
-    console.log(`👤 Модератор: ${MODERATOR_ID}`);
+    console.log(`👤 Модератор ID: ${MODERATOR_ID}`);
+    console.log(`📢 Канал: @CircleTokpending`);
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
