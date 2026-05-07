@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>CircleTok</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>🎬 CircleTok</h1>
+            <div class="user-info">
+                <span id="username"></span>
+                <div class="avatar" id="avatar"></div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="feed">📹 Лента</button>
+            <button class="tab-btn" data-tab="favorites">❤️ Избранное</button>
+            <button class="tab-btn" data-tab="profile">👤 Профиль</button>
+            <button class="tab-btn" data-tab="upload">➕ Создать</button>
+            <button class="tab-btn adult-tab" data-tab="adult">🔞 18+</button>
+        </div>
+        
+        <div id="content" class="content">
+            <!-- Сюда будет загружаться контент -->
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

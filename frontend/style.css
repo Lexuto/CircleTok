@@ -1,0 +1,351 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow-x: hidden;
+}
+
+#app {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header h1 {
+    font-size: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.tabs {
+    display: flex;
+    overflow-x: auto;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    gap: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.adult-tab.active {
+    background: linear-gradient(135deg, #ff4d4d, #cc0000);
+}
+
+.content {
+    padding: 20px;
+    padding-bottom: 80px;
+}
+
+/* Feed styles */
+.feed-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.video-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.video-wrapper {
+    position: relative;
+    background: #000;
+}
+
+.video-player {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.video-stats {
+    display: flex;
+    gap: 15px;
+}
+
+.like-btn, .favorite-btn {
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    backdrop-filter: blur(5px);
+    transition: all 0.2s;
+}
+
+.like-btn.liked {
+    color: #ff4d4d;
+    background: rgba(255,77,77,0.2);
+}
+
+.favorite-btn.favorited {
+    color: #ffd700;
+}
+
+.video-info {
+    text-align: right;
+}
+
+.username {
+    display: block;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.views {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+/* Profile styles */
+.profile-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.profile-header {
+    text-align: center;
+    padding: 30px 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+    margin-bottom: 20px;
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    margin: 0 auto 15px;
+    background-size: cover;
+    background-position: center;
+}
+
+.profile-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 5px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.videos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.video-thumb {
+    position: relative;
+    aspect-ratio: 1;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.video-thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumb-overlay {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: rgba(0,0,0,0.7);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+}
+
+/* Upload styles */
+.upload-container {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.upload-options {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+.preview-container {
+    margin: 20px 0;
+}
+
+.preview-container video {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 15px;
+}
+
+.record-controls {
+    margin-top: 15px;
+}
+
+.record-controls progress {
+    width: 100%;
+    height: 5px;
+    border-radius: 5px;
+}
+
+.upload-tips {
+    text-align: left;
+    background: rgba(255,255,255,0.05);
+    padding: 20px;
+    border-radius: 15px;
+    margin-top: 30px;
+}
+
+.upload-tips ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.loading, .error {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+}
