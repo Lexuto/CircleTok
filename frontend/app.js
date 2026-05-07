@@ -18,6 +18,38 @@ let currentUserId = user.id.toString();
 tg.expand();
 tg.ready();
 
+// Глобальная функция переключения вкладок
+window.switchTab = function(tab) {
+    console.log('Переключение на вкладку:', tab);
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-tab') === tab) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Загружаем контент
+    switch(tab) {
+        case 'feed':
+            loadFeed(false);
+            break;
+        case 'adult':
+            loadFeed(true);
+            break;
+        case 'favorites':
+            loadFavorites();
+            break;
+        case 'profile':
+            loadProfile();
+            break;
+        case 'upload':
+            showUploadInterface();
+            break;
+    }
+};
+
 // Показ уведомления
 function showMessage(title, message, isError = false) {
     const notification = document.createElement('div');
