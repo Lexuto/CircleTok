@@ -430,3 +430,34 @@ body {
     gap: 15px;
     justify-content: center;
 }
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: rgba(0,0,0,0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 12px 20px;
+    min-width: 200px;
+    text-align: center;
+    z-index: 10000;
+    transition: transform 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.notification-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #667eea;
+}
+
+.notification-message {
+    font-size: 14px;
+    color: white;
+}
