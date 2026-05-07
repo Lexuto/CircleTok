@@ -91,3 +91,42 @@ process.once('SIGINT', () => {
     bot.stop('SIGINT');
     process.exit(0);
 });
+// Обработка модерации
+bot.action(/approve_(.+)/, async (ctx) => {
+    const videoId = ctx.match[1];
+    
+    await fetch(`http://localhost:3000/api/moderate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, status: 'approved' })
+    });
+    
+    await ctx.answerCbQuery('✅ Видео одобрено!');
+    await ctx.editMessageText(ctx.update.callback_query.message.text + '\n\n✅ ОДОБРЕНО');
+});
+
+bot.action(/adult_(.+)/, async (ctx) => {
+    const videoId = ctx.match[1];
+    
+    await fetch(`http://localhost:3000/api/moderate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, status: 'adult' })
+    });
+    
+    await ctx.answerCbQuery('🔞 Видео в 18+');
+    await ctx.editMessageText(ctx.update.callback_query.message.text + '\n\n🔞 18+');
+});
+
+bot.action(/reject_(.+)/, async (ctx) => {
+    const videoId = ctx.match[1];
+    
+    await fetch(`http://localhost:3000/api/moderate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, status: 'rejected' })
+    });
+    
+    await ctx.answerCbQuery('❌ Видео отклонено');
+    await ctx.editMessageText(ctx.update.callback_query.message.text + '\n\n❌ ОТКЛОНЕНО');
+});
