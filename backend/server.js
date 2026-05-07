@@ -53,14 +53,14 @@ const CHANNEL_PENDING = '@CircleTokpending';
 const CHANNEL_APPROVED = '@CircleTokapproved';
 const CHANNEL_ADULT = '@CircleTokadult';
 
-// Функция отправки видео на модерацию с КНОПКАМИ
+// Функция отправки видео на модерацию с КНОПКАМИ (ИСПРАВЛЕНА)
 async function sendToModeration(videoBuffer, userId, username, videoId) {
     try {
         console.log(`📹 Отправляем видео #${videoId} от @${username}`);
         
         // 1. Отправляем видео в канал модерации
         const videoMessage = await bot.telegram.sendVideoNote(
-            CHANNEL_PENDING,
+            '@CircleTokpending',
             { source: videoBuffer },
             { duration: 60, length: 640 }
         );
@@ -68,19 +68,22 @@ async function sendToModeration(videoBuffer, userId, username, videoId) {
         const fileId = videoMessage.video_note.file_id;
         const messageId = videoMessage.message_id;
         
-        // 2. Сохраняем file_id и message_id в БД
+        // 2. Сохраняем в БД
         await db.run(
             'UPDATE videos SET file_id = ?, message_id = ? WHERE id = ?',
             [fileId, messageId.toString(), videoId]
         );
         
-        // 3. Отправляем информацию о пользователе в канал
+        // 3. Отправляем информацию в канал
         await bot.telegram.sendMessage(
-            CHANNEL_PENDING,
-            `👤 Пользователь: @${username}\n🆔 ID: ${userId}\n🎬 Видео #${videoId}\n📅 ${new Date().toLocaleString()}`
+            '@CircleTokpending',
+            `👤 Пользователь: @${username}\n🆔 ID: ${userId}\n🎬 Видео #${videoId}`
         );
         
-        // 4. Отправляем МОДЕРАТОРУ сообщение с КНОПКАМИ
+        // 4. ОТПРАВЛЯЕМ МОДЕРАТОРУ СООБЩЕНИЕ С КНОПКАМИ (ИСПРАВЛЕНО)
+        const MODERATOR_ID = process.env.MODERATOR_ID;
+        console.log(`📤 Отправляем кнопки модератору ${MODERATOR_ID}`);
+        
         const keyboard = {
             inline_keyboard: [
                 [
@@ -93,6 +96,7 @@ async function sendToModeration(videoBuffer, userId, username, videoId) {
             ]
         };
         
+        // Пробуем отправить напрямую
         await bot.telegram.sendMessage(
             MODERATOR_ID,
             `📹 НОВОЕ ВИДЕО НА МОДЕРАЦИЮ!\n\n` +
@@ -103,7 +107,8 @@ async function sendToModeration(videoBuffer, userId, username, videoId) {
             { reply_markup: keyboard }
         );
         
-        console.log(`✅ Видео #${videoId} отправлено на модерацию, кнопки отправлены модератору`);
+        console.log(`✅ Кнопки отправлены модератору ${MODERATOR_ID}`);
+        
         return fileId;
         
     } catch (error) {
