@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: circle-tok-api
+    runtime: node
+    repo: https://github.com/Lexuto/CircleTok
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: MODERATOR_ID
+        sync: false
+      - key: CHANNEL_PENDING
+        sync: false
+      - key: CHANNEL_APPROVED
+        sync: false
+      - key: CHANNEL_ADULT
+        sync: false
+      - key: PORT
+        value: 3000
